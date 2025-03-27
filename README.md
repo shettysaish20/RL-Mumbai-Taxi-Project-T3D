@@ -8,6 +8,8 @@ An extension of my previous iteration of Reinforcement Learning, this model is t
 
 This project implements a Twin-Delayed Deep Deterministic Policy Gradient (TD3) model to train a virtual taxi to drive within a simulated Mumbai environment. The taxi learns to avoid obstacles and reach designated goals.
 
+Google Colab Reference Notebook (shared in class): [ERA1S25.ipynb](https://colab.research.google.com/drive/1bgmBUB6YuC-LuG-3X5QAXVEaWHaZEEsB?usp=sharing)
+
 ## Game
 
 The taxi model (**an Actor Model**) has three locations in the map where it has to drop its passengers, while ensuring it takes the right path to reach each of the three locations one-by-one.
