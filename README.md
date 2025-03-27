@@ -1,16 +1,16 @@
-# RL-Mumbai-Taxi-Project
-A Reinforcement Learning model trained to empower the Mumbai Taxi learn to navigate the bustling streets of Mumbai
+# RL-Mumbai-Taxi-Project-TD3
 
+An extension of my previous iteration of Reinforcement Learning, this model is trained using Twin-Delayed Deep Deterministic Policy Gradient (TD3) to enable a Mumbai Taxi to navigate the streets of Mumbai.
 
 ![RL Agent](images/running_image.png)
 
 ## Overview
 
-This project implements a Deep Q-Network (DQN) to train a virtual taxi to drive within a simulated Mumbai environment. The taxi learns to avoid sand (obstacles) and reach designated goals.
+This project implements a Twin-Delayed Deep Deterministic Policy Gradient (TD3) model to train a virtual taxi to drive within a simulated Mumbai environment. The taxi learns to avoid obstacles and reach designated goals.
 
 ## Key Files
 
--   [ai.py](RL-Mumbai-Taxi-Project/ai.py): Contains the DQN implementation, including the neural network architecture and learning logic.
+-   [T3D_ai_model.py](RL-Mumbai-Taxi-Project/ai.py): Contains the TD3 implementation, including the neural network architectures (actor and critic) and learning logic.
 -   [map.py](RL-Mumbai-Taxi-Project/map.py): Implements the game environment, car dynamics, and reward system.
 -   [car.kv](RL-Mumbai-Taxi-Project/car.kv): Defines the Kivy UI elements for the car and environment.
 -   [images/](RL-Mumbai-Taxi-Project/images/): Contains images for the map, car, and other visual elements.
