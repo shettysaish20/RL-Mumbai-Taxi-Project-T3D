@@ -158,6 +158,8 @@ class Game(Widget):
         for act in action:
             rotation = float(act * 5) #scaling the action CHANGE: prev value 5
             self.car.move(rotation)
+        # rotation = float(action[0] * 5)
+        # self.car.move(rotation)
         distance = np.sqrt((self.car.x - goal_x)**2 + (self.car.y - goal_y)**2)
         self.ball1.pos = self.car.sensor1
         self.ball2.pos = self.car.sensor2
@@ -274,13 +276,13 @@ class CarApp(App):
 
     def save(self, obj):
         print("saving brain...")
-        brain.save()
+        brain.save("model", "mumbai_taxi_run")
         plt.plot(scores)
         plt.show()
 
     def load(self, obj):
         print("loading last saved brain...")
-        brain.load()
+        brain.load("model", "mumbai_taxi_run")
 
 # Running the whole thing
 if __name__ == '__main__':
