@@ -133,7 +133,7 @@ class TD3(object):
     state = torch.Tensor(state.reshape(1, -1)).to(device)
     return self.actor(state).cpu().data.numpy().flatten()
 
-  def train(self, iterations, batch_size=100, discount=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
+  def train(self, iterations, batch_size=200, discount=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
 
     for it in range(iterations):
 
@@ -202,7 +202,7 @@ class TD3(object):
     # print("New State shape:",new_state.shape)
     self.memory.add((self.last_state, new_state, self.last_action, self.last_reward, False))
     action = self.select_action(new_state)
-    if len(self.memory.storage) > 100:
+    if len(self.memory.storage) > 500:
         # batch_state, batch_next_state, batch_action, batch_reward = self.memory.sample(100)
         self.train(iterations=10)
     self.last_action = action
