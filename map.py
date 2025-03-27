@@ -21,7 +21,8 @@ from PIL import Image as PILImage
 from kivy.graphics.texture import Texture
 
 # Importing the Dqn object from our AI in ai.py
-from ai import Dqn
+# from ai import Dqn
+from ai2 import TD3
 
 # Adding this line if we don't want the right click to put a red point
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
@@ -36,8 +37,9 @@ n_points = 0
 length = 0
 
 # Getting our AI, which we call "brain", and that contains our neural network that represents our Q-function
-brain = Dqn(5,3,0.9)
-action2rotation = [0,5,-5]
+# brain = Dqn(5,3,0.9)
+brain = TD3(5,3,1)
+# action2rotation = [0,5,-5]
 last_reward = 0
 scores = []
 im = CoreImage("./images/mask.png")
@@ -150,10 +152,12 @@ class Game(Widget):
         yy = goal_y - self.car.y
         orientation = Vector(*self.car.velocity).angle((xx,yy))/180.
         last_signal = [self.car.signal1, self.car.signal2, self.car.signal3, orientation, -orientation]
-        action = brain.update(last_reward, last_signal)
+        action = brain.update(last_reward, np.array(last_signal))
         scores.append(brain.score())
-        rotation = action2rotation[action]
-        self.car.move(rotation)
+        # rotation = action2rotation[action]
+        for act in action:
+            rotation = float(act * 5) #scaling the action CHANGE: prev value 5
+            self.car.move(rotation)
         distance = np.sqrt((self.car.x - goal_x)**2 + (self.car.y - goal_y)**2)
         self.ball1.pos = self.car.sensor1
         self.ball2.pos = self.car.sensor2

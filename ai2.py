@@ -41,6 +41,13 @@ class ReplayBuffer(object):
       batch_actions.append(np.array(action, copy=False))
       batch_rewards.append(np.array(reward, copy=False))
       batch_dones.append(np.array(done, copy=False))
+    batch_states = np.array(batch_states)
+    batch_next_states = np.array(batch_next_states)
+    batch_actions = np.array(batch_actions)
+    batch_rewards = np.array(batch_rewards).reshape(-1, 1)
+    batch_dones = np.array(batch_dones).reshape(-1, 1)
+    # print("Batch states shape:", batch_states.shape)
+    # print("Batch actions shape:", batch_actions.shape)
     return np.array(batch_states), np.array(batch_next_states), np.array(batch_actions), np.array(batch_rewards).reshape(-1, 1), np.array(batch_dones).reshape(-1, 1)  
 ## Actor Model
 
@@ -48,9 +55,9 @@ class Actor(nn.Module):
 
   def __init__(self, state_dim, action_dim, max_action):
     super(Actor, self).__init__()
-    self.layer_1 = nn.Linear(state_dim, 400)
-    self.layer_2 = nn.Linear(400, 300)
-    self.layer_3 = nn.Linear(300, action_dim)
+    self.layer_1 = nn.Linear(state_dim, 32)
+    self.layer_2 = nn.Linear(32, 16)
+    self.layer_3 = nn.Linear(16, action_dim)
     self.max_action = max_action
 
   def forward(self, x):
@@ -66,15 +73,17 @@ class Critic(nn.Module):
   def __init__(self, state_dim, action_dim):
     super(Critic, self).__init__()
     # Defining the first Critic neural network
-    self.layer_1 = nn.Linear(state_dim + action_dim, 400)
-    self.layer_2 = nn.Linear(400, 300)
-    self.layer_3 = nn.Linear(300, 1)
+    self.layer_1 = nn.Linear(state_dim + action_dim, 32)
+    self.layer_2 = nn.Linear(32, 16)
+    self.layer_3 = nn.Linear(16, 1)
     # Defining the second Critic neural network
-    self.layer_4 = nn.Linear(state_dim + action_dim, 400)
-    self.layer_5 = nn.Linear(400, 300)
-    self.layer_6 = nn.Linear(300, 1)
+    self.layer_4 = nn.Linear(state_dim + action_dim, 32)
+    self.layer_5 = nn.Linear(32, 16)
+    self.layer_6 = nn.Linear(16, 1)
 
   def forward(self, x, u):
+    # print("State shape:", x.shape)
+    # print("Action shape:", u.shape)
     xu = torch.cat([x, u], 1)
     # Forward-Propagation on the first Critic Neural Network
     x1 = F.relu(self.layer_1(xu))
@@ -96,12 +105,15 @@ class Critic(nn.Module):
 
 # Selecting the device (CPU or GPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 # Building the whole Training Process into a class
 
 class TD3(object):
 
   def __init__(self, state_dim, action_dim, max_action):
+    self.max_action = max_action
+    self.action_dim = action_dim
     self.actor = Actor(state_dim, action_dim, max_action).to(device)
     self.actor_target = Actor(state_dim, action_dim, max_action).to(device)
     self.actor_target.load_state_dict(self.actor.state_dict())
@@ -111,28 +123,39 @@ class TD3(object):
     self.critic_target.load_state_dict(self.critic.state_dict())
     self.critic_optimizer = torch.optim.Adam(self.critic.parameters())
     self.max_action = max_action
+    self.memory = ReplayBuffer()
+    self.reward_window = []
+    self.last_state = torch.Tensor(state_dim).unsqueeze(0)
+    self.last_action = np.zeros(action_dim, dtype=np.float32) # Changed to numpy array
+    self.last_reward = 0
 
   def select_action(self, state):
     state = torch.Tensor(state.reshape(1, -1)).to(device)
     return self.actor(state).cpu().data.numpy().flatten()
 
-  def train(self, replay_buffer, iterations, batch_size=100, discount=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
+  def train(self, iterations, batch_size=100, discount=0.99, tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
 
     for it in range(iterations):
 
       # Step 4: We sample a batch of transitions (s, s’, a, r) from the memory
-      batch_states, batch_next_states, batch_actions, batch_rewards, batch_dones = replay_buffer.sample(batch_size)
-      state = torch.Tensor(batch_states).to(device)
-      next_state = torch.Tensor(batch_next_states).to(device)
-      action = torch.Tensor(batch_actions).to(device)
+      batch_states, batch_next_states, batch_actions, batch_rewards, batch_dones = self.memory.sample(batch_size)
+      state = torch.Tensor(batch_states).squeeze(1).to(device)
+      next_state = torch.Tensor(batch_next_states).squeeze(1).to(device)
+      # Ensure batch_actions is float32 and has the correct shape
+      action = torch.Tensor(batch_actions).float().to(device)
       reward = torch.Tensor(batch_rewards).to(device)
       done = torch.Tensor(batch_dones).to(device)
+    #   print("State shape:", state.shape)
+    #   print("Action shape:", action.shape)
+    #   print("Next State shape:",next_state.shape)
 
       # Step 5: From the next state s’, the Actor target plays the next action a’
       next_action = self.actor_target(next_state)
 
       # Step 6: We add Gaussian noise to this next action a’ and we clamp it in a range of values supported by the environment
-      noise = torch.Tensor(batch_actions).data.normal_(0, policy_noise).to(device)
+      noise = torch.Tensor(batch_actions).data.normal_(0, policy_noise).to(device).reshape(batch_size, self.action_dim)
+    #   print("Next Action Shape",next_action.shape)
+    #   print("Noise Shape: ",noise.shape)
       noise = noise.clamp(-noise_clip, noise_clip)
       next_action = (next_action + noise).clamp(-self.max_action, self.max_action)
 
@@ -170,6 +193,25 @@ class TD3(object):
         # Step 15: Still once every two iterations, we update the weights of the Critic target by polyak averaging
         for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
           target_param.data.copy_(tau * param.data + (1 - tau) * target_param.data)
+  
+  def score(self):
+        return sum(self.reward_window)/(len(self.reward_window)+1.)
+
+  def update(self, reward, new_signal):
+    new_state = torch.Tensor(new_signal).float().unsqueeze(0)
+    # print("New State shape:",new_state.shape)
+    self.memory.add((self.last_state, new_state, self.last_action, self.last_reward, False))
+    action = self.select_action(new_state)
+    if len(self.memory.storage) > 100:
+        # batch_state, batch_next_state, batch_action, batch_reward = self.memory.sample(100)
+        self.train(iterations=10)
+    self.last_action = action
+    self.last_state = new_state
+    self.last_reward = reward
+    self.reward_window.append(reward)
+    if len(self.reward_window) > 1000:
+        del self.reward_window[0]
+    return action
 
   # Making a save method to save a trained model
   def save(self, filename, directory):
